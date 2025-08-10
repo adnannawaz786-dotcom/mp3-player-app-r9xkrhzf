@@ -35,7 +35,7 @@ export const useAudioPlayer = () => {
     };
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleEnded = () => handleTrackEnd();
-    const handleError = (e) => {
+    const handleError = () => {
       setError('Failed to load audio');
       setIsLoading(false);
       setIsPlaying(false);
@@ -70,14 +70,14 @@ export const useAudioPlayer = () => {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const analyserNode = ctx.createAnalyser();
         const source = ctx.createMediaElementSource(audioRef.current);
-        
+
         analyserNode.fftSize = 256;
         source.connect(analyserNode);
         analyserNode.connect(ctx.destination);
-        
+
         setAudioContext(ctx);
         setAnalyser(analyserNode);
-        
+
         const bufferLength = analyserNode.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         setAudioData(dataArray);
@@ -97,22 +97,22 @@ export const useAudioPlayer = () => {
 
   const loadTrack = useCallback((track) => {
     if (!track || !track.src) return;
-    
+
     setError(null);
     setCurrentTrack(track);
-    
+
     if (audioRef.current) {
       audioRef.current.src = track.src;
       audioRef.current.volume = isMuted ? 0 : volume;
       audioRef.current.playbackRate = playbackRate;
     }
-    
+
     initializeAudioContext();
   }, [volume, isMuted, playbackRate, initializeAudioContext]);
 
   const play = useCallback(async () => {
     if (!audioRef.current || !currentTrack) return;
-    
+
     try {
       if (audioContext && audioContext.state === 'suspended') {
         await audioContext.resume();
@@ -176,7 +176,7 @@ export const useAudioPlayer = () => {
     } else {
       setIsPlaying(false);
     }
-  }, [repeatMode, currentIndex, playlist.length]);
+  }, [repeatMode, currentIndex, playlist.length, seek, play, playNext]);
 
   const playTrack = useCallback((track, index = -1) => {
     loadTrack(track);
@@ -188,31 +188,32 @@ export const useAudioPlayer = () => {
 
   const playNext = useCallback(() => {
     if (playlist.length === 0) return;
-    
+
     let nextIndex;
     if (isShuffled) {
       nextIndex = Math.floor(Math.random() * playlist.length);
     } else {
       nextIndex = (currentIndex + 1) % playlist.length;
     }
-    
+
     playTrack(playlist[nextIndex], nextIndex);
   }, [playlist, currentIndex, isShuffled, playTrack]);
 
   const playPrevious = useCallback(() => {
     if (playlist.length === 0) return;
-    
+
     let prevIndex;
     if (isShuffled) {
       prevIndex = Math.floor(Math.random() * playlist.length);
     } else {
       prevIndex = currentIndex <= 0 ? playlist.length - 1 : currentIndex - 1;
     }
-    
+
     playTrack(playlist[prevIndex], prevIndex);
   }, [playlist, currentIndex, isShuffled, playTrack]);
 
-  const setPlaylist = useCallback((tracks) => {
+  // ✅ FIXED: Renamed custom setter to avoid name collision
+  const updatePlaylist = useCallback((tracks) => {
     setPlaylist(tracks);
     if (tracks.length > 0 && currentIndex === -1) {
       setCurrentIndex(0);
@@ -297,7 +298,7 @@ export const useAudioPlayer = () => {
     playTrack,
     playNext,
     playPrevious,
-    setPlaylist,
+    updatePlaylist,      // ✅ renamed custom setter
     addToPlaylist,
     removeFromPlaylist,
     toggleShuffle,
